@@ -7,18 +7,14 @@ lbranch ("last branch") is a git utility that shows your recently checked out br
 ```bash
 git clone https://github.com/yourusername/lbranch.git ~/.lbranch
 ```
-3. Make the script executable:
-```bash
-chmod +x ~/.lbranch/bin/lbranch
-```
-4. Create a symlink or add to your PATH:
+3. Create a symlink or add to your PATH:
 ```bash
 # Option 1: Symlink to /usr/local/bin
 ln -s ~/.lbranch/bin/lbranch /usr/local/bin/lbranch
 # Option 2: Add to your PATH in ~/.zshrc or ~/.bashrc
 export PATH="$PATH:~/.lbranch/bin"
 ```
-5. (Optional) Add an alias in your shell config:
+4. (Optional) Add an alias in your shell config:
 ```bash
 alias lb=lbranch
 ```
