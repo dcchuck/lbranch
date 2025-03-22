@@ -27,6 +27,12 @@ if ! git rev-parse --is-inside-work-tree >/dev/null 2>&1; then
     print_error "Not a git repository. Please run this command from within a git repository."
 fi
 
+# Check if the repository has any commits
+if ! git rev-parse --verify HEAD >/dev/null 2>&1; then
+    echo "${BLUE}No branch history found - repository has no commits yet${NC}"
+    exit 0
+fi
+
 # Parse arguments
 branch_count=5
 choose_mode=false
@@ -46,32 +52,35 @@ for arg in "$@"; do
     esac
 done
 
-# Get unique branch history
+# Get current branch name
+current_branch=$(git symbolic-ref --short HEAD 2>/dev/null || git rev-parse --short HEAD)
+
+# Get unique branch history (from branches instead of to branches)
 branches=()
 while IFS= read -r branch; do
     # Skip empty lines and remove leading/trailing whitespace
     [[ -z "${branch// }" ]] && continue
     
+    # Skip the current branch
+    [[ "$branch" == "$current_branch" ]] && continue
+    
     # Only add branch if it's not already in the array
     if [[ ! " ${branches[@]} " =~ " ${branch} " ]]; then
         branches+=("$branch")
     fi
-done < <(git reflog | grep -i 'checkout: moving' | awk '{print $NF}' | grep -v '^{' | head -n 100)
+done < <(git reflog | grep -i 'checkout: moving from' | awk '{for(i=1;i<=NF;i++) if($i=="from") print $(i+1)}' | grep -v '^{' | head -n 100)
 
 # Limit to requested number of branches
 total_branches=${#branches[@]}
 if (( total_branches == 0 )); then
-    print_error "No branch history found"
-fi
-
-if (( branch_count > total_branches )); then
-    branch_count=$total_branches
+    echo "${BLUE}Last $branch_count branches:${NC}"
+    exit
 fi
 
 # Display branches
 echo "${BLUE}Last $branch_count branches:${NC}"
-for ((i = 1; i <= branch_count; i++)); do
-    echo "$i) ${branches[$i-1]}"
+for ((i = 1; i <= total_branches; i++)); do
+    echo "$((i))) ${branches[$i]}"
 done
 
 # Handle choose mode
