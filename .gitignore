@@ -3,3 +3,4 @@ TODO
 .mise.toml
 __pycache__
 .pytest_cache
+*.*.swp
