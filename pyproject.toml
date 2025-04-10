@@ -5,12 +5,12 @@ build-backend = "hatchling.build"
 [project]
 name = "lbranch"
 version = "0.1.0"
-description = "A Git utility that shows recently checked out branches in chronological order"
+description = "A Git utility that shows recently checked-out branches in chronological order and lets you quickly switch between them."
 readme = "README.md"
 requires-python = ">=3.7"
 license = "MIT"
 authors = [
-    { name = "Charles Danielsson" }
+    { name = "Chuck Danielsson" }
 ]
 classifiers = [
     "Development Status :: 4 - Beta",
