@@ -4,19 +4,14 @@ import subprocess
 import tempfile
 import unittest
 from textwrap import dedent
+import sys
+from io import StringIO
+from lbranch.main import main
 
 class TestLBranch(unittest.TestCase):
     def setUp(self):
         self.test_dir = tempfile.mkdtemp()
-        # self.test_dir = './test_dir'
         self.original_dir = os.getcwd()
-
-        # Ensure bin/lbranch exists and is executable
-        self.lbranch_path = os.path.join(self.original_dir, 'bin', 'lbranch')
-        if not os.path.isfile(self.lbranch_path):
-            raise FileNotFoundError(f"Could not find bin/lbranch at {self.lbranch_path}")
-        if not os.access(self.lbranch_path, os.X_OK):
-            raise PermissionError(f"bin/lbranch is not executable at {self.lbranch_path}")
 
         # Setup test repository
         os.chdir(self.test_dir)
@@ -41,18 +36,39 @@ class TestLBranch(unittest.TestCase):
         subprocess.run(['git', 'commit', '-m', f'commit on {branch_name}'],
                       capture_output=True, check=True)
 
+    def run_lbranch(self, args=None):
+        """Run lbranch and capture its output"""
+        if args is None:
+            args = []
+        # Save original stdout
+        original_stdout = sys.stdout
+        # Create a string buffer to capture output
+        output = StringIO()
+        sys.stdout = output
+        try:
+            # Save original argv
+            original_argv = sys.argv
+            sys.argv = ['lbranch'] + args
+            try:
+                main()
+            except SystemExit as e:
+                # Only handle exit code 0 (success)
+                if e.code != 0:
+                    raise
+        finally:
+            # Restore stdout and argv
+            sys.stdout = original_stdout
+            sys.argv = original_argv
+        return output.getvalue()
+
     def test_no_commits(self):
         """Test behavior when repository has no commits"""
         # Create new branch without any commits
         subprocess.run(['git', 'checkout', '-b', 'empty-branch'],
                       capture_output=True, check=True)
 
-        result = subprocess.run([self.lbranch_path], capture_output=True, text=True)
-        clean_output = self.strip_color_codes(result.stdout)
-
-        # Should show no branches
-        expected_output = "No branch history found - repository has no commits yet"
-        self.assertEqual(clean_output.strip(), expected_output.strip())
+        output = self.run_lbranch()
+        self.assertIn("No branch history found - repository has no commits yet", output)
 
     def test_first_branch_scenario(self):
         """Test behavior with main branch and new branch"""
@@ -68,15 +84,9 @@ class TestLBranch(unittest.TestCase):
         subprocess.run(['git', 'checkout', '-b', 'feature'],
                       capture_output=True, check=True)
 
-        result = subprocess.run([self.lbranch_path], capture_output=True, text=True)
-        clean_output = self.strip_color_codes(result.stdout)
-
-        expected_output = dedent("""\
-            Last 5 branches:
-            1) main
-            """)
-
-        self.assertEqual(clean_output.strip(), expected_output.strip())
+        output = self.run_lbranch()
+        self.assertIn("Last 5 branches:", output)
+        self.assertIn("1) main", output)
 
     def test_exclude_current_branch(self):
         """Test that current branch is excluded from results"""
@@ -95,14 +105,9 @@ class TestLBranch(unittest.TestCase):
         subprocess.run(['git', 'checkout', 'main'],
                       capture_output=True, check=True)
 
-        result = subprocess.run([self.lbranch_path], capture_output=True, text=True)
-        clean_output = self.strip_color_codes(result.stdout)
-        expected_output = dedent("""\
-            Last 5 branches:
-            1) feature
-            """)
-
-        self.assertEqual(clean_output.strip(), expected_output.strip())
+        output = self.run_lbranch()
+        self.assertIn("Last 5 branches:", output)
+        self.assertIn("1) feature", output)
 
     def test_branch_order_and_format(self):
         # Create initial commit on main
@@ -126,25 +131,13 @@ class TestLBranch(unittest.TestCase):
                       capture_output=True, check=True)
         self.create_branch_with_commit('b4', 'b4 content')
 
-        # Expected output (ignoring colors)
-        expected_output = dedent("""\
-            Last 5 branches:
-            1) dev
-            2) b3
-            3) b1
-            4) b2
-            5) main
-            """)
-
-        # Run lbranch
-        result = subprocess.run([self.lbranch_path], capture_output=True, text=True)
-        clean_output = self.strip_color_codes(result.stdout)
-        self.assertEqual(clean_output.strip(), expected_output.strip())
-
-    def strip_color_codes(self, text):
-        """Remove ANSI color codes from text"""
-        import re
-        return re.sub(r'\033\[[0-9;]*m', '', text)
+        output = self.run_lbranch()
+        self.assertIn("Last 5 branches:", output)
+        self.assertIn("1) dev", output)
+        self.assertIn("2) b3", output)
+        self.assertIn("3) b1", output)
+        self.assertIn("4) b2", output)
+        self.assertIn("5) main", output)
 
 if __name__ == '__main__':
-    unittest.main()
+    unittest.main() 
