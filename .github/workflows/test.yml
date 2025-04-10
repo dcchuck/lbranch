@@ -24,4 +24,4 @@ jobs:
       run: git config --global init.defaultBranch main
 
     - name: Run unittest
-      run: python -m unittest test.py
+      run: python -m unittest test/test_lbranch.py
