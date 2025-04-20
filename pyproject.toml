@@ -32,3 +32,26 @@ lbranch = "lbranch.main:main"
 
 [tool.hatch.build]
 packages = ["lbranch"] 
+
+[tool.ruff]
+# Same as Black formatter default
+line-length = 88
+
+[tool.ruff.lint]
+# Rule sets:
+# E, F: Basic linting (errors, syntax)
+# B: Bugbear (bug detection)
+# I: Import sorting
+select = ["E", "F", "B", "I"]
+
+# Exclude directories not to check
+exclude = [
+    ".git",
+    "__pycache__",
+    ".pytest_cache",
+]
+
+[tool.ruff.format]
+# Use single quotes for consistency
+quote-style = "single"
+line-ending = "auto"

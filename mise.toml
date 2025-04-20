@@ -1,0 +1,20 @@
+[tools]
+python = "3.12.8"
+ruff = "latest"
+
+[tasks]
+# Lint: Check code for errors, bugs, style issues without modifying files
+# Uses rules E (errors), F (flake8), B (bugbear), I (imports)
+lint = "ruff check ."
+
+# Format: Fix formatting issues by rewriting files according to style rules
+# Makes actual changes to files to fix whitespace, quotes, etc.
+format = "ruff format ."
+
+# Format-check: Verify if files meet formatting standards without changes
+# Reports files that would be changed by 'format' but doesn't modify them
+# Ideal for CI pipelines to verify consistent formatting
+format-check = "ruff format --check ."
+
+# Test: Run the unittest suite
+test = "python -m unittest test/test_lbranch.py"
