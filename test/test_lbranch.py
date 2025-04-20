@@ -139,5 +139,36 @@ class TestLBranch(unittest.TestCase):
         self.assertIn("4) b2", output)
         self.assertIn("5) main", output)
 
+    def test_custom_number(self):
+        """Test specifying a custom number of branches to show"""
+        # Create initial commit on main
+        with open('README.md', 'w') as f:
+            f.write('initial')
+        subprocess.run(['git', 'add', 'README.md'],
+                      capture_output=True, check=True)
+        subprocess.run(['git', 'commit', '-m', 'initial'],
+                      capture_output=True, check=True)
+
+        # Create branches with actual commits
+        self.create_branch_with_commit('dev', 'dev content')
+        self.create_branch_with_commit('b1', 'b1 content')
+        subprocess.run(['git', 'checkout', 'dev'],
+                      capture_output=True, check=True)
+        self.create_branch_with_commit('b2', 'b2 content')
+
+        # Test with -n flag
+        output = self.run_lbranch(['-n', '2'])
+        self.assertIn("Last 2 branches:", output)
+        self.assertIn("1) dev", output)
+        self.assertIn("2) b1", output)
+        self.assertNotIn("3) main", output)
+
+        # Test with --number flag
+        output = self.run_lbranch(['--number', '3'])
+        self.assertIn("Last 3 branches:", output)
+        self.assertIn("1) dev", output)
+        self.assertIn("2) b1", output)
+        self.assertIn("3) main", output)
+
 if __name__ == '__main__':
     unittest.main() 

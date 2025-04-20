@@ -3,15 +3,16 @@ lbranch ("last branch") is a git utility that shows your recently checked out br
 
 ## Usage
 ```bash
-# Show last 5 branches
+# Show last 5 branches (default)
 lbranch
 # Show last N branches
-lbranch 3
+lbranch -n 3
+lbranch --number 3
 # Show branches and choose one to checkout
 lbranch -c
 lbranch --choose
 # Show last N branches and choose one
-lbranch 3 -c
+lbranch -n 3 -c
 ```
 
 ## Example Output
@@ -25,7 +26,7 @@ Last 5 branches:
 ```
 
 ## Requirements
-- Python 3.6+
+- Python 3.7+
 - Git
 
 ## License
