@@ -25,5 +25,8 @@ jobs:
       - name: Run ruff formatter check
         run: mise run format-check
       
+      - name: Set the default branch for testing
+        run: git config --global init.defaultBranch main
+      
       - name: Run tests
         run: mise run test
