@@ -8,11 +8,14 @@ lbranch
 # Show last N branches
 lbranch -n 3
 lbranch --number 3
-# Show branches and choose one to checkout
-lbranch -c
-lbranch --choose
-# Show last N branches and choose one
-lbranch -n 3 -c
+# Show branches and select one to checkout
+lbranch -s
+lbranch --select
+# Show last N branches and select one
+lbranch -n 3 -s
+# Color control
+lbranch --no-color     # Disable colored output
+lbranch --force-color  # Force colored output even in non-TTY environments
 ```
 
 ## Example Output
@@ -25,8 +28,15 @@ Last 5 branches:
 5) develop
 ```
 
+## Color Support
+lbranch automatically detects if your terminal supports colors:
+- Colors are disabled when output is not to a terminal (when piped to a file or another command)
+- Colors are disabled on Windows unless running in a modern terminal (Windows Terminal, VS Code, etc.)
+- You can force colors on with `--force-color` or off with `--no-color`
+- lbranch respects the `NO_COLOR` and `FORCE_COLOR` environment variables
+
 ## Requirements
-- Python 3.7+
+- Python 3.6+
 - Git
 
 ## License

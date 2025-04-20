@@ -6,12 +6,49 @@ import subprocess
 import sys
 import re
 import argparse
+import os
+import platform
 
-# Colors for output
-RED = '\033[0;31m'
-GREEN = '\033[0;32m'
-BLUE = '\033[0;34m'
-NC = '\033[0m'  # No Color
+# Colors for output - with fallback detection
+def supports_color():
+    """
+    Returns True if the terminal supports color, False otherwise.
+    Falls back to no-color on non-TTY or Windows (unless FORCE_COLOR is set).
+    """
+    # Return True if the FORCE_COLOR environment variable is set
+    if os.environ.get('FORCE_COLOR', '').lower() in ('1', 'true', 'yes', 'on'):
+        return True
+        
+    # Return False if NO_COLOR environment variable is set (honor the NO_COLOR convention)
+    if os.environ.get('NO_COLOR', ''):
+        return False
+        
+    # Return False if not connected to a terminal
+    if not sys.stdout.isatty():
+        return False
+        
+    # On Windows, check if running in a terminal that supports ANSI
+    if platform.system() == 'Windows':
+        # Windows Terminal and modern PowerShell support colors
+        # Older Windows consoles may not
+        # Simple check for modern Windows terminals
+        return os.environ.get('WT_SESSION') or os.environ.get('TERM') or 'ANSICON' in os.environ
+        
+    # Most Unix terminals support colors
+    return True
+
+# Set up colors based on environment
+if supports_color():
+    RED = '\033[0;31m'
+    GREEN = '\033[0;32m'
+    BLUE = '\033[0;34m'
+    NC = '\033[0m'  # No Color
+else:
+    # No colors if not supported
+    RED = ''
+    GREEN = ''
+    BLUE = ''
+    NC = ''
 
 # Version - should match pyproject.toml
 __version__ = "0.1.0"
@@ -42,22 +79,36 @@ def parse_arguments():
     """Parse command line arguments using argparse"""
     parser = argparse.ArgumentParser(
         description="Show recently checked out Git branches in chronological order",
-        epilog="Example: lbranch -n 10 -c (shows the last 10 branches with option to choose one)"
+        epilog="Example: lbranch -n 10 -s (shows the last 10 branches with option to select one)"
     )
     
     parser.add_argument('-n', '--number', type=int, default=5,
                         help='Number of branches to display (default: 5)')
-    parser.add_argument('-c', '--choose', action='store_true',
-                        help='Enter interactive mode to checkout a listed branch')
+    parser.add_argument('-s', '--select', action='store_true',
+                        help='Enter interactive mode to select a branch for checkout')
     parser.add_argument('-v', '--version', action='version',
                         version=f'%(prog)s {__version__}',
                         help='Show version information and exit')
+    parser.add_argument('-nc', '--no-color', action='store_true',
+                        help='Disable colored output')
+    parser.add_argument('-fc', '--force-color', action='store_true',
+                        help='Force colored output even on non-TTY environments')
     
     return parser.parse_args()
 
 def main():
     """Main entry point for the lbranch command."""
     args = parse_arguments()
+    
+    # Handle manual color override options
+    global RED, GREEN, BLUE, NC
+    if args.no_color:
+        RED = GREEN = BLUE = NC = ''
+    elif args.force_color:
+        RED = '\033[0;31m'
+        GREEN = '\033[0;32m'
+        BLUE = '\033[0;34m'
+        NC = '\033[0m'
     
     # Check if git is installed
     try:
@@ -118,8 +169,8 @@ def main():
     for i, branch in enumerate(branches, 1):
         print(f"{i}) {branch}")
 
-    # Handle choose mode
-    if args.choose:
+    # Handle select mode
+    if args.select:
         try:
             print(f"\n{GREEN}Enter branch number to checkout (1-{branch_limit}):{NC}")
             branch_num = input()

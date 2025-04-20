@@ -6,7 +6,8 @@ import unittest
 from textwrap import dedent
 import sys
 from io import StringIO
-from lbranch.main import main
+from unittest import mock
+from lbranch.main import main, supports_color
 
 class TestLBranch(unittest.TestCase):
     def setUp(self):
@@ -169,6 +170,112 @@ class TestLBranch(unittest.TestCase):
         self.assertIn("1) dev", output)
         self.assertIn("2) b1", output)
         self.assertIn("3) main", output)
+
+    def test_select_mode(self):
+        """Test interactive select mode (without actually selecting)"""
+        # Create initial commit on main
+        with open('README.md', 'w') as f:
+            f.write('initial')
+        subprocess.run(['git', 'add', 'README.md'], 
+                      capture_output=True, check=True)
+        subprocess.run(['git', 'commit', '-m', 'initial'],
+                      capture_output=True, check=True)
+
+        # Create feature branch with commit
+        self.create_branch_with_commit('feature', 'feature content')
+
+        # We can't fully test interactive mode without mocking input()
+        # But we can test that the prompt is displayed
+        with mock.patch('builtins.input', return_value="invalid"):
+            try:
+                output = self.run_lbranch(['-s'])
+                # This should not be reached as an invalid selection raises SystemExit
+                self.fail("Should have raised SystemExit")
+            except SystemExit:
+                pass  # Expected behavior
+
+    def test_color_flags(self):
+        """Test --no-color and --force-color flags"""
+        # Create initial commit on main
+        with open('README.md', 'w') as f:
+            f.write('initial')
+        subprocess.run(['git', 'add', 'README.md'],
+                      capture_output=True, check=True)
+        subprocess.run(['git', 'commit', '-m', 'initial'],
+                      capture_output=True, check=True)
+
+        # Create and checkout new branch
+        subprocess.run(['git', 'checkout', '-b', 'feature'],
+                      capture_output=True, check=True)
+
+        # Test with --no-color flag
+        output_no_color = self.run_lbranch(['--no-color'])
+        # Color codes shouldn't be present
+        self.assertNotIn('\033[', output_no_color)
+        
+        # Test with --force-color flag 
+        output_force_color = self.run_lbranch(['--force-color'])
+        # Color codes should be present
+        self.assertIn('\033[', output_force_color)
+
+
+class TestColorSupport(unittest.TestCase):
+    """Test color support detection functionality"""
+    
+    @mock.patch('sys.stdout.isatty')
+    @mock.patch('platform.system')
+    @mock.patch.dict(os.environ, {}, clear=True)
+    def test_no_tty(self, mock_platform, mock_isatty):
+        """Test behavior when output is not to a TTY"""
+        mock_isatty.return_value = False
+        mock_platform.return_value = 'Linux'
+        self.assertFalse(supports_color())
+    
+    @mock.patch('sys.stdout.isatty')
+    @mock.patch('platform.system')
+    @mock.patch.dict(os.environ, {'FORCE_COLOR': '1'}, clear=True)
+    def test_force_color(self, mock_platform, mock_isatty):
+        """Test behavior with FORCE_COLOR env var"""
+        mock_isatty.return_value = False  # Should still return True due to FORCE_COLOR
+        mock_platform.return_value = 'Linux'
+        self.assertTrue(supports_color())
+    
+    @mock.patch('sys.stdout.isatty')
+    @mock.patch('platform.system')
+    @mock.patch.dict(os.environ, {'NO_COLOR': '1'}, clear=True)
+    def test_no_color_env(self, mock_platform, mock_isatty):
+        """Test behavior with NO_COLOR env var"""
+        mock_isatty.return_value = True  # Would normally return True
+        mock_platform.return_value = 'Linux'
+        self.assertFalse(supports_color())
+    
+    @mock.patch('sys.stdout.isatty')
+    @mock.patch('platform.system')
+    @mock.patch.dict(os.environ, {}, clear=True)
+    def test_windows_no_color_support(self, mock_platform, mock_isatty):
+        """Test behavior on Windows with no color support"""
+        mock_isatty.return_value = True
+        mock_platform.return_value = 'Windows'
+        self.assertFalse(supports_color())
+    
+    @mock.patch('sys.stdout.isatty')
+    @mock.patch('platform.system')
+    @mock.patch.dict(os.environ, {'WT_SESSION': '1'}, clear=True)
+    def test_windows_with_color_support(self, mock_platform, mock_isatty):
+        """Test behavior on Windows with color support (Windows Terminal)"""
+        mock_isatty.return_value = True
+        mock_platform.return_value = 'Windows'
+        self.assertTrue(supports_color())
+    
+    @mock.patch('sys.stdout.isatty')
+    @mock.patch('platform.system')
+    @mock.patch.dict(os.environ, {}, clear=True)
+    def test_unix_default(self, mock_platform, mock_isatty):
+        """Test behavior on Unix with TTY"""
+        mock_isatty.return_value = True
+        mock_platform.return_value = 'Linux'
+        self.assertTrue(supports_color())
+
 
 if __name__ == '__main__':
     unittest.main() 
