@@ -7,7 +7,14 @@ from textwrap import dedent
 import sys
 from io import StringIO
 from unittest import mock
-from lbranch.main import main, supports_color
+from lbranch.main import (
+    main, supports_color,
+    EXIT_SUCCESS, EXIT_USAGE, EXIT_NOINPUT, EXIT_UNAVAILABLE, 
+    EXIT_TEMPFAIL, EXIT_INTERRUPTED,
+    # Mapped equivalents
+    EXIT_GIT_NOT_FOUND, EXIT_NOT_A_GIT_REPO, EXIT_NO_COMMITS,
+    EXIT_INVALID_SELECTION, EXIT_CHECKOUT_FAILED
+)
 
 class TestLBranch(unittest.TestCase):
     def setUp(self):
@@ -37,30 +44,50 @@ class TestLBranch(unittest.TestCase):
         subprocess.run(['git', 'commit', '-m', f'commit on {branch_name}'],
                       capture_output=True, check=True)
 
-    def run_lbranch(self, args=None):
-        """Run lbranch and capture its output"""
+    def run_lbranch(self, args=None, expected_exit_code=None):
+        """
+        Run lbranch and capture its output.
+        
+        If expected_exit_code is provided, assert that the exit code matches.
+        Otherwise, only handle EXIT_SUCCESS (0) exit codes.
+        
+        Returns the output (stdout and stderr combined) and exit code.
+        """
         if args is None:
             args = []
-        # Save original stdout
+        # Save original stdout and stderr
         original_stdout = sys.stdout
-        # Create a string buffer to capture output
-        output = StringIO()
-        sys.stdout = output
+        original_stderr = sys.stderr
+        # Create string buffers to capture output
+        stdout_buffer = StringIO()
+        stderr_buffer = StringIO()
+        sys.stdout = stdout_buffer
+        sys.stderr = stderr_buffer
+        exit_code = EXIT_SUCCESS
         try:
             # Save original argv
             original_argv = sys.argv
             sys.argv = ['lbranch'] + args
             try:
-                main()
+                exit_code = main()
             except SystemExit as e:
-                # Only handle exit code 0 (success)
-                if e.code != 0:
-                    raise
+                exit_code = e.code
         finally:
-            # Restore stdout and argv
+            # Restore stdout, stderr and argv
             sys.stdout = original_stdout
+            sys.stderr = original_stderr
             sys.argv = original_argv
-        return output.getvalue()
+            
+        if expected_exit_code is not None:
+            self.assertEqual(expected_exit_code, exit_code, 
+                             f"Expected exit code {expected_exit_code}, got {exit_code}")
+        
+        # Combine stdout and stderr
+        stdout_output = stdout_buffer.getvalue()
+        stderr_output = stderr_buffer.getvalue()
+        combined_output = stdout_output + stderr_output
+        
+        return combined_output, exit_code
 
     def test_no_commits(self):
         """Test behavior when repository has no commits"""
@@ -68,8 +95,11 @@ class TestLBranch(unittest.TestCase):
         subprocess.run(['git', 'checkout', '-b', 'empty-branch'],
                       capture_output=True, check=True)
 
-        output = self.run_lbranch()
+        output, exit_code = self.run_lbranch(expected_exit_code=EXIT_NO_COMMITS)
         self.assertIn("No branch history found - repository has no commits yet", output)
+        self.assertEqual(EXIT_NO_COMMITS, exit_code)
+        # Verify it's the expected sysexits.h code
+        self.assertEqual(EXIT_NOINPUT, exit_code)
 
     def test_first_branch_scenario(self):
         """Test behavior with main branch and new branch"""
@@ -85,9 +115,10 @@ class TestLBranch(unittest.TestCase):
         subprocess.run(['git', 'checkout', '-b', 'feature'],
                       capture_output=True, check=True)
 
-        output = self.run_lbranch()
+        output, exit_code = self.run_lbranch(expected_exit_code=EXIT_SUCCESS)
         self.assertIn("Last 5 branches:", output)
         self.assertIn("1) main", output)
+        self.assertEqual(EXIT_SUCCESS, exit_code)
 
     def test_exclude_current_branch(self):
         """Test that current branch is excluded from results"""
@@ -106,9 +137,10 @@ class TestLBranch(unittest.TestCase):
         subprocess.run(['git', 'checkout', 'main'],
                       capture_output=True, check=True)
 
-        output = self.run_lbranch()
+        output, exit_code = self.run_lbranch(expected_exit_code=EXIT_SUCCESS)
         self.assertIn("Last 5 branches:", output)
         self.assertIn("1) feature", output)
+        self.assertEqual(EXIT_SUCCESS, exit_code)
 
     def test_branch_order_and_format(self):
         # Create initial commit on main
@@ -132,13 +164,14 @@ class TestLBranch(unittest.TestCase):
                       capture_output=True, check=True)
         self.create_branch_with_commit('b4', 'b4 content')
 
-        output = self.run_lbranch()
+        output, exit_code = self.run_lbranch(expected_exit_code=EXIT_SUCCESS)
         self.assertIn("Last 5 branches:", output)
         self.assertIn("1) dev", output)
         self.assertIn("2) b3", output)
         self.assertIn("3) b1", output)
         self.assertIn("4) b2", output)
         self.assertIn("5) main", output)
+        self.assertEqual(EXIT_SUCCESS, exit_code)
 
     def test_custom_number(self):
         """Test specifying a custom number of branches to show"""
@@ -158,21 +191,23 @@ class TestLBranch(unittest.TestCase):
         self.create_branch_with_commit('b2', 'b2 content')
 
         # Test with -n flag
-        output = self.run_lbranch(['-n', '2'])
+        output, exit_code = self.run_lbranch(['-n', '2'], expected_exit_code=EXIT_SUCCESS)
         self.assertIn("Last 2 branches:", output)
         self.assertIn("1) dev", output)
         self.assertIn("2) b1", output)
         self.assertNotIn("3) main", output)
+        self.assertEqual(EXIT_SUCCESS, exit_code)
 
         # Test with --number flag
-        output = self.run_lbranch(['--number', '3'])
+        output, exit_code = self.run_lbranch(['--number', '3'], expected_exit_code=EXIT_SUCCESS)
         self.assertIn("Last 3 branches:", output)
         self.assertIn("1) dev", output)
         self.assertIn("2) b1", output)
         self.assertIn("3) main", output)
+        self.assertEqual(EXIT_SUCCESS, exit_code)
 
     def test_select_mode(self):
-        """Test interactive select mode (without actually selecting)"""
+        """Test interactive select mode with invalid input"""
         # Create initial commit on main
         with open('README.md', 'w') as f:
             f.write('initial')
@@ -184,15 +219,42 @@ class TestLBranch(unittest.TestCase):
         # Create feature branch with commit
         self.create_branch_with_commit('feature', 'feature content')
 
-        # We can't fully test interactive mode without mocking input()
-        # But we can test that the prompt is displayed
-        with mock.patch('builtins.input', return_value="invalid"):
-            try:
-                output = self.run_lbranch(['-s'])
-                # This should not be reached as an invalid selection raises SystemExit
-                self.fail("Should have raised SystemExit")
-            except SystemExit:
-                pass  # Expected behavior
+        # Test invalid selection (out of range)
+        with mock.patch('builtins.input', return_value="999"):
+            output, exit_code = self.run_lbranch(['-s'], expected_exit_code=EXIT_INVALID_SELECTION)
+            self.assertIn("Invalid selection", output)
+            self.assertEqual(EXIT_INVALID_SELECTION, exit_code)
+            # Verify it's the expected sysexits.h code
+            self.assertEqual(EXIT_USAGE, exit_code)
+
+        # Test non-numeric input
+        with mock.patch('builtins.input', return_value="abc"):
+            output, exit_code = self.run_lbranch(['-s'], expected_exit_code=EXIT_INVALID_SELECTION)
+            self.assertIn("Invalid selection", output)
+            self.assertEqual(EXIT_INVALID_SELECTION, exit_code)
+            # Verify it's the expected sysexits.h code
+            self.assertEqual(EXIT_USAGE, exit_code)
+
+    def test_keyboard_interrupt(self):
+        """Test handling of keyboard interrupt (Ctrl+C)"""
+        # Create initial commit on main
+        with open('README.md', 'w') as f:
+            f.write('initial')
+        subprocess.run(['git', 'add', 'README.md'], 
+                      capture_output=True, check=True)
+        subprocess.run(['git', 'commit', '-m', 'initial'],
+                      capture_output=True, check=True)
+
+        # Create feature branch with commit
+        self.create_branch_with_commit('feature', 'feature content')
+
+        # Test KeyboardInterrupt
+        with mock.patch('builtins.input', side_effect=KeyboardInterrupt):
+            output, exit_code = self.run_lbranch(['-s'], expected_exit_code=EXIT_INTERRUPTED)
+            self.assertIn("Operation cancelled", output)
+            self.assertEqual(EXIT_INTERRUPTED, exit_code)
+            # Verify it matches the shell standard for SIGINT
+            self.assertEqual(130, exit_code)
 
     def test_color_flags(self):
         """Test --no-color and --force-color flags"""
@@ -209,14 +271,16 @@ class TestLBranch(unittest.TestCase):
                       capture_output=True, check=True)
 
         # Test with --no-color flag
-        output_no_color = self.run_lbranch(['--no-color'])
+        output_no_color, exit_code = self.run_lbranch(['--no-color'], expected_exit_code=EXIT_SUCCESS)
         # Color codes shouldn't be present
         self.assertNotIn('\033[', output_no_color)
+        self.assertEqual(EXIT_SUCCESS, exit_code)
         
         # Test with --force-color flag 
-        output_force_color = self.run_lbranch(['--force-color'])
+        output_force_color, exit_code = self.run_lbranch(['--force-color'], expected_exit_code=EXIT_SUCCESS)
         # Color codes should be present
         self.assertIn('\033[', output_force_color)
+        self.assertEqual(EXIT_SUCCESS, exit_code)
 
 
 class TestColorSupport(unittest.TestCase):

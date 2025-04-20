@@ -9,6 +9,32 @@ import argparse
 import os
 import platform
 
+# Exit codes - following sysexits.h conventions
+EXIT_SUCCESS = 0       # successful execution
+EXIT_USAGE = 64        # command line usage error
+EXIT_DATAERR = 65      # data format error
+EXIT_NOINPUT = 66      # cannot open input
+EXIT_NOUSER = 67       # addressee unknown
+EXIT_NOHOST = 68       # host name unknown
+EXIT_UNAVAILABLE = 69  # service unavailable
+EXIT_SOFTWARE = 70     # internal software error
+EXIT_OSERR = 71        # system error (e.g., can't fork)
+EXIT_OSFILE = 72       # critical OS file missing
+EXIT_CANTCREAT = 73    # can't create (user) output file
+EXIT_IOERR = 74        # input/output error
+EXIT_TEMPFAIL = 75     # temp failure; user is invited to retry
+EXIT_PROTOCOL = 76     # remote error in protocol
+EXIT_NOPERM = 77       # permission denied
+EXIT_CONFIG = 78       # configuration error
+
+# Custom mapping of our error conditions to sysexits.h values
+EXIT_GIT_NOT_FOUND = EXIT_UNAVAILABLE  # Git command not found (69)
+EXIT_NOT_A_GIT_REPO = EXIT_USAGE       # Not in a git repository (64)
+EXIT_NO_COMMITS = EXIT_NOINPUT         # No branch history/no commits (66)
+EXIT_INVALID_SELECTION = EXIT_USAGE    # Invalid branch selection (64)
+EXIT_CHECKOUT_FAILED = EXIT_TEMPFAIL   # Branch checkout failed, retry possible (75)
+EXIT_INTERRUPTED = 130                 # Operation interrupted (Ctrl+C) - shell standard
+
 # Colors for output - with fallback detection
 def supports_color():
     """
@@ -53,10 +79,10 @@ else:
 # Version - should match pyproject.toml
 __version__ = "0.1.0"
 
-def print_error(message):
-    """Print error message and exit"""
+def print_error(message, exit_code=EXIT_SOFTWARE):
+    """Print error message and exit with specified code"""
     print(f"{RED}Error: {message}{NC}", file=sys.stderr)
-    sys.exit(1)
+    sys.exit(exit_code)
 
 def run_command(cmd, check=True, capture_output=True):
     """Run a shell command and handle errors"""
@@ -73,7 +99,7 @@ def run_command(cmd, check=True, capture_output=True):
         if not check:
             return e
         print_error(f"Command failed: {e}")
-        sys.exit(1)
+        sys.exit(EXIT_SOFTWARE)
 
 def parse_arguments():
     """Parse command line arguments using argparse"""
@@ -92,7 +118,7 @@ def parse_arguments():
     parser.add_argument('-nc', '--no-color', action='store_true',
                         help='Disable colored output')
     parser.add_argument('-fc', '--force-color', action='store_true',
-                        help='Force colored output even on non-TTY environments')
+                        help='Force colored output even in non-TTY environments')
     
     return parser.parse_args()
 
@@ -114,16 +140,16 @@ def main():
     try:
         run_command(["git", "--version"], capture_output=True)
     except FileNotFoundError:
-        print_error("git command not found. Please install git first.")
+        print_error("git command not found. Please install git first.", EXIT_GIT_NOT_FOUND)
 
     # Check if we're in a git repository
     if run_command(["git", "rev-parse", "--is-inside-work-tree"], check=False, capture_output=True).returncode != 0:
-        print_error("Not a git repository. Please run this command from within a git repository.")
+        print_error("Not a git repository. Please run this command from within a git repository.", EXIT_NOT_A_GIT_REPO)
 
     # Check if the repository has any commits
     if run_command(["git", "rev-parse", "--verify", "HEAD"], check=False, capture_output=True).returncode != 0:
         print(f"{BLUE}No branch history found - repository has no commits yet{NC}")
-        sys.exit(0)
+        sys.exit(EXIT_NO_COMMITS)
 
     # Get current branch name
     try:
@@ -159,7 +185,7 @@ def main():
     total_branches = len(branches)
     if total_branches == 0:
         print(f"{BLUE}Last {args.number} branches:{NC}")
-        sys.exit(0)
+        sys.exit(EXIT_SUCCESS)
 
     branch_limit = min(args.number, total_branches)
     branches = branches[:branch_limit]  # Limit to requested count
@@ -176,7 +202,7 @@ def main():
             branch_num = input()
             
             if not re.match(r'^\d+$', branch_num) or int(branch_num) < 1 or int(branch_num) > branch_limit:
-                print_error(f"Invalid selection: {branch_num}")
+                print_error(f"Invalid selection: {branch_num}", EXIT_INVALID_SELECTION)
                 
             selected_branch = branches[int(branch_num) - 1]
             print(f"\nChecking out: {selected_branch}")
@@ -184,12 +210,15 @@ def main():
             # Attempt to checkout the branch
             result = run_command(["git", "checkout", selected_branch], check=False, capture_output=True)
             if result.returncode != 0:
-                print_error(f"Failed to checkout branch:\n{result.stderr}")
+                print_error(f"Failed to checkout branch:\n{result.stderr}", EXIT_CHECKOUT_FAILED)
                 
             print(f"{GREEN}Successfully checked out {selected_branch}{NC}")
         except KeyboardInterrupt:
             print("\nOperation cancelled.")
-            sys.exit(1)
+            sys.exit(EXIT_INTERRUPTED)
+
+    # Success
+    return EXIT_SUCCESS
 
 if __name__ == '__main__':
-    main() 
+    sys.exit(main()) 

@@ -35,6 +35,18 @@ lbranch automatically detects if your terminal supports colors:
 - You can force colors on with `--force-color` or off with `--no-color`
 - lbranch respects the `NO_COLOR` and `FORCE_COLOR` environment variables
 
+## Exit Codes
+lbranch follows the standard exit codes from sysexits.h for better integration with scripts and other tools:
+
+- 0: Success
+- 64: Command line usage error (not in a git repository, invalid selection)
+- 66: Cannot open input (no branch history/no commits)
+- 69: Service unavailable (git command not found)
+- 75: Temporary failure (branch checkout failed, retry possible)
+- 130: Operation interrupted (Ctrl+C)
+
+These follow Unix conventions where exit codes 64-78 are standardized error codes, and 128+N indicates termination by signal N.
+
 ## Requirements
 - Python 3.6+
 - Git
