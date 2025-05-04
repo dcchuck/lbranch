@@ -48,8 +48,27 @@ lbranch follows the standard exit codes from sysexits.h for better integration w
 These follow Unix conventions where exit codes 64-78 are standardized error codes, and 128+N indicates termination by signal N.
 
 ## Requirements
-- Python 3.6+
+- Python 3.7+
 - Git
+
+## Installation
+
+### Using pip
+
+You can install lbranch directly from [PyPI](https://pypi.org/project/lbranch/):
+
+```bash
+pip install lbranch
+```
+
+### Using Homebrew
+
+You can install lbranch using [Homebrew](https://brew.sh/):
+
+```bash
+brew tap dcchuck/lbranch
+brew install lbranch
+```
 
 ## License
 Distributed under the MIT License. See `LICENSE`
