@@ -249,8 +249,9 @@ def main():
     # Handle select mode
     if args.select:
         try:
-            print(f'\n{GREEN}Enter branch number to checkout (1-{branch_limit}):{NC}')
-            branch_num = input()
+            branch_num = input(
+                f'\n{GREEN}Enter branch number to checkout (1-{branch_limit}): {NC}'
+            )
 
             if (
                 not re.match(r'^\d+$', branch_num)
