@@ -82,8 +82,8 @@ else:
     BLUE = ''
     NC = ''
 
-# Version - should match pyproject.toml
-__version__ = '0.1.0'
+# Import version from __init__.py
+from . import __version__
 
 
 def print_error(message, exit_code=EXIT_SOFTWARE):

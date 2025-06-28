@@ -4,7 +4,7 @@ build-backend = "hatchling.build"
 
 [project]
 name = "lbranch"
-version = "0.1.1"
+version = "0.1.2"
 description = "A Git utility that shows recently checked-out branches in chronological order and lets you quickly switch between them."
 readme = "README.md"
 requires-python = ">=3.7"
