@@ -9,6 +9,8 @@ import re
 import subprocess
 import sys
 
+from . import __version__
+
 # Exit codes - following sysexits.h conventions
 EXIT_SUCCESS = 0  # successful execution
 EXIT_USAGE = 64  # command line usage error
@@ -83,7 +85,6 @@ else:
     NC = ''
 
 # Import version from __init__.py
-from . import __version__
 
 
 def print_error(message, exit_code=EXIT_SOFTWARE):

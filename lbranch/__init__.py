@@ -3,6 +3,7 @@ lbranch - A Git utility that shows recently checked out branches in chronologica
 """
 
 from pathlib import Path
+
 from .main import main
 
 # Read version from VERSION file
