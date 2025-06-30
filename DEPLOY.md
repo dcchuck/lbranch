@@ -9,7 +9,7 @@
 # 2. Build and upload to PyPI
 rm -rf dist/ build/
 python -m build
-python -m twine upload dist/* -u __token__ -p $PYPI_TOKEN
+python -m twine upload dist/*
 
 # 3. Tag release
 git tag v0.1.3 && git push --tags
