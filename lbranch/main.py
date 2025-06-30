@@ -8,8 +8,7 @@ import platform
 import re
 import subprocess
 import sys
-
-from . import __version__
+from pathlib import Path
 
 # Exit codes - following sysexits.h conventions
 EXIT_SUCCESS = 0  # successful execution
@@ -84,7 +83,9 @@ else:
     BLUE = ''
     NC = ''
 
-# Import version from __init__.py
+# Read version from VERSION file
+_version_file = Path(__file__).parent.parent / 'VERSION'
+__version__ = _version_file.read_text().strip()
 
 
 def print_error(message, exit_code=EXIT_SOFTWARE):
