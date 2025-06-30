@@ -19,6 +19,9 @@ jobs:
       - name: Setup dependencies with mise
         run: mise install
       
+      - name: Install pytest
+        run: pip install pytest
+      
       - name: Run ruff linter
         run: mise run lint
       
