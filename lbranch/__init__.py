@@ -2,11 +2,7 @@
 lbranch - A Git utility that shows recently checked out branches in chronological order.
 """
 
-from pathlib import Path
-
 from .main import main
+from .version import __version__
 
-_version_file = Path(__file__).parent.parent / 'VERSION'
-__version__ = _version_file.read_text().strip()
-
-__all__ = ['main']
+__all__ = ['main', '__version__']
