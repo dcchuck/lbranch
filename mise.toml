@@ -16,5 +16,5 @@ format = "ruff format ."
 # Ideal for CI pipelines to verify consistent formatting
 format-check = "ruff format --check ."
 
-# Test: Run the unittest suite
-test = "python -m unittest test/test_lbranch.py"
+# Test: Run the test suite with pytest
+test = "python -m pytest"
