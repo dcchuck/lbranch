@@ -150,6 +150,39 @@ def parse_arguments():
     return parser.parse_args()
 
 
+def extract_branches_from_reflog(reflog_output, current_branch):
+    """Extract unique branch names from git reflog output.
+    
+    Args:
+        reflog_output: The output from 'git reflog' command
+        current_branch: The name of the current branch to exclude
+        
+    Returns:
+        A list of unique branch names in chronological order (most recent first)
+    """
+    branches = []
+    for line in reflog_output.splitlines():
+        # Look for checkout lines without using grep
+        if 'checkout: moving from' in line.lower():
+            # Parse the branch name after "from"
+            parts = line.split()
+            try:
+                from_index = parts.index('from')
+                if from_index + 1 < len(parts):
+                    branch = parts[from_index + 1]
+
+                    # Skip empty, current branch, or branches starting with '{'
+                    if not branch or branch == current_branch or branch.startswith('{'):
+                        continue
+
+                    # Only add branch if it's not already in the list
+                    if branch not in branches:
+                        branches.append(branch)
+            except ValueError:
+                continue  # "from" not found in this line
+    return branches
+
+
 def main():
     """Main entry point for the lbranch command."""
     args = parse_arguments()
@@ -209,27 +242,7 @@ def main():
 
     # Get unique branch history
     reflog_output = run_command(['git', 'reflog'], capture_output=True).stdout
-
-    branches = []
-    for line in reflog_output.splitlines():
-        # Look for checkout lines without using grep
-        if 'checkout: moving from' in line.lower():
-            # Parse the branch name after "from"
-            parts = line.split()
-            try:
-                from_index = parts.index('from')
-                if from_index + 1 < len(parts):
-                    branch = parts[from_index + 1]
-
-                    # Skip empty, current branch, or branches starting with '{'
-                    if not branch or branch == current_branch or branch.startswith('{'):
-                        continue
-
-                    # Only add branch if it's not already in the list
-                    if branch not in branches:
-                        branches.append(branch)
-            except ValueError:
-                continue  # "from" not found in this line
+    branches = extract_branches_from_reflog(reflog_output, current_branch)
 
     # Limit to requested number of branches
     total_branches = len(branches)
