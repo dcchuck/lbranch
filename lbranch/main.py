@@ -152,11 +152,11 @@ def parse_arguments():
 
 def extract_branches_from_reflog(reflog_output, current_branch):
     """Extract unique branch names from git reflog output.
-    
+
     Args:
         reflog_output: The output from 'git reflog' command
         current_branch: The name of the current branch to exclude
-        
+
     Returns:
         A list of unique branch names in chronological order (most recent first)
     """
