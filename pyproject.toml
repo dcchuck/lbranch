@@ -25,6 +25,9 @@ classifiers = [
     "Programming Language :: Python :: 3.9",
     "Programming Language :: Python :: 3.10",
     "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
+    "Programming Language :: Python :: 3.14",
     "Topic :: Software Development :: Version Control :: Git",
     "Topic :: Utilities",
 ]
@@ -62,8 +65,3 @@ exclude = [
 # Use single quotes for consistency
 quote-style = "single"
 line-ending = "auto"
-
-[tool.pytest.ini_options]
-# Suppress pytest-asyncio warning since we don't use async
-asyncio_mode = "auto"
-asyncio_default_fixture_loop_scope = "function"

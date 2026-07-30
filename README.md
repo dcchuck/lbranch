@@ -66,8 +66,7 @@ pip install lbranch
 You can install lbranch using [Homebrew](https://brew.sh/):
 
 ```bash
-brew tap dcchuck/lbranch
-brew install lbranch
+brew install dcchuck/tap/lbranch
 ```
 
 ## License
