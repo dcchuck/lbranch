@@ -15,5 +15,5 @@ python -m twine upload dist/*
 git tag v0.1.3 && git push --tags
 
 # 4. Update Homebrew
-# See ../homebrew-lbranch/README.md
+# See ../homebrew-tap/README.md
 ```
